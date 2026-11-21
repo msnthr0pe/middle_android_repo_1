@@ -19,6 +19,7 @@ class AnimatedCardStackView @JvmOverloads constructor(
     private var isRotated = false
     private var verticalDragOffset = 0f
     private val swipeThreshold = 80f * resources.displayMetrics.density
+    private val flingVelocityThreshold = 800f * resources.displayMetrics.density
 
     fun setCards(newCardDataList: List<CardData>) {
         cardDataList = newCardDataList
@@ -121,7 +122,14 @@ class AnimatedCardStackView @JvmOverloads constructor(
             velocityY: Float
         ): Boolean {
             // TODO: Обработка в заданиях 3 и 4
-            return super.onFling(e1, e2, velocityX, velocityY)
+            val isVertical = abs(velocityY) > abs(velocityX)
+
+            if (isVertical && abs(velocityY) > flingVelocityThreshold) {
+                onSwipe()
+                verticalDragOffset = 0f
+                return true
+            }
+            return false
         }
     })
 
@@ -143,7 +151,12 @@ class AnimatedCardStackView @JvmOverloads constructor(
     }
 
     // TODO: [Задание 3] Добавьте обработку вертикальных свайпов (вверх/вниз)
-    private fun onSwipe(isVertical: Boolean = true) {}
+    private fun onSwipe(isVertical: Boolean = true) {
+        if (isVertical) {
+            isRotated = !isRotated
+            updateCardPositions()
+        }
+    }
 
     // TODO: [Задание 4] Добавьте обработку горизонтальных свайпов (влево/вправо)
 }
