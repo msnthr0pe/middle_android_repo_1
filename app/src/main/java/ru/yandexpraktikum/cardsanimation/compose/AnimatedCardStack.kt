@@ -1,6 +1,6 @@
 package ru.yandexpraktikum.cardsanimation.compose
 
-import androidx.compose.foundation.clickable
+import androidx.compose.foundation.gestures.detectDragGestures
 import androidx.compose.foundation.layout.Box
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -10,7 +10,11 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.unit.dp
 import ru.yandexpraktikum.cardsanimation.model.CardData
+import kotlin.math.abs
 
 /**
  * Метод для вычисления поворота карты в конкретной позиции
@@ -36,12 +40,28 @@ fun AnimatedCardStack(cards: List<CardData>) {
     val cardCount = cards.size
     var isRotated by remember { mutableStateOf(false) }
 
-    // TODO: [Задание 2] Добавьте обработку жестов
-    // Подсказка: Используйте Modifier.pointerInput() с методом detectDragGestures()
-
     Box(
-        modifier = Modifier.clickable{
-            isRotated = !isRotated
+        modifier = Modifier.pointerInput(Unit) {
+            var totalDrag = Offset.Zero
+            val swipeThreshold = 80.dp.toPx()
+
+            detectDragGestures(
+                onDragStart = {
+                    totalDrag = Offset.Zero
+                },
+                onDragEnd = {
+                    val dx = totalDrag.x
+                    val dy = totalDrag.y
+
+                    // TODO: Обработка жестов в заданиях 3 и 4
+                    if (abs(dy) > abs(dx) && abs(dy) > swipeThreshold) {
+                        onSwipe()
+                    }
+                }
+            ) { change, dragAmount ->
+                change.consume()
+                totalDrag += dragAmount
+            }
         },
         contentAlignment = Alignment.Center
     ) {
@@ -59,6 +79,8 @@ fun AnimatedCardStack(cards: List<CardData>) {
         }
     }
 }
+
+fun onSwipe(isVertical: Boolean = true) {}
 
 // Простая функция перестановки карт
 fun reorderCards(cards: List<CardData>): List<CardData> {
