@@ -40,6 +40,12 @@ fun AnimatedCardStack(cards: List<CardData>) {
     val cardCount = cards.size
     var isRotated by remember { mutableStateOf(false) }
 
+    fun onSwipe(isVertical: Boolean = true) {
+        if (isVertical) {
+            isRotated = !isRotated
+        }
+    }
+
     Box(
         modifier = Modifier.pointerInput(Unit) {
             var totalDrag = Offset.Zero
@@ -79,8 +85,6 @@ fun AnimatedCardStack(cards: List<CardData>) {
         }
     }
 }
-
-fun onSwipe(isVertical: Boolean = true) {}
 
 // Простая функция перестановки карт
 fun reorderCards(cards: List<CardData>): List<CardData> {
