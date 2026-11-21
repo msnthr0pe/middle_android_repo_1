@@ -1,8 +1,10 @@
 package ru.yandexpraktikum.cardsanimation.views
 
+import android.animation.ObjectAnimator
 import android.content.Context
 import android.util.AttributeSet
 import android.view.LayoutInflater
+import android.view.animation.AccelerateDecelerateInterpolator
 import android.widget.FrameLayout
 import android.widget.ImageView
 import androidx.cardview.widget.CardView
@@ -17,6 +19,7 @@ class AnimatedCardView @JvmOverloads constructor(
 
     val cardView: CardView
     private val cardImageView: ImageView
+    private var rotationAnimator: ObjectAnimator? = null
 
     init {
         LayoutInflater.from(context).inflate(R.layout.card_view, this, true)
@@ -42,11 +45,27 @@ class AnimatedCardView @JvmOverloads constructor(
         cardView.cardElevation = (4 + index * 1).toFloat() * resources.displayMetrics.density
     }
 
-    // TODO: [Задание 1] Добавьте методы для анимации
-    // Подсказка: используйте ObjectAnimator для плавной анимации
+    fun animateToRotation(targetRotation: Float, duration: Long = 300L) {
+        rotationAnimator?.cancel()
 
-    // TODO: [Задание 1] Добавьте метод для анимации поворота карты (чтобы был плавный эффект раскрытия/закрытия колоды)
-    // fun animateToRotation(targetRotation: Float, duration: Long = 300) { ... }
+        rotationAnimator = ObjectAnimator.ofFloat(
+            this,
+            ROTATION,
+            rotation,
+            targetRotation
+        ).apply {
+            this.duration = duration
+            interpolator = AccelerateDecelerateInterpolator()
+            start()
+        }
+    }
+
+    override fun onDetachedFromWindow() {
+        rotationAnimator?.cancel()
+        rotationAnimator = null
+        super.onDetachedFromWindow()
+    }
+
 
     // TODO: [Задание 5, шаг 1] Добавьте метод для анимации перетасовки карт (первым шагом нижняя карта двигается вправо)
     // fun moveCardRight(onComplete: (() -> Unit)? = null) { ... }
