@@ -2,8 +2,11 @@ package ru.yandexpraktikum.cardsanimation.views
 
 import android.content.Context
 import android.util.AttributeSet
+import android.view.GestureDetector
+import android.view.MotionEvent
 import android.widget.FrameLayout
 import ru.yandexpraktikum.cardsanimation.model.CardData
+import kotlin.math.abs
 
 class AnimatedCardStackView @JvmOverloads constructor(
     context: Context,
@@ -14,13 +17,8 @@ class AnimatedCardStackView @JvmOverloads constructor(
     private var cardDataList: List<CardData> = emptyList()
     private val cards = mutableListOf<AnimatedCardView>()
     private var isRotated = false
-
-    init {
-        setOnClickListener {
-            isRotated = !isRotated
-            updateCardPositions()
-        }
-    }
+    private var verticalDragOffset = 0f
+    private val swipeThreshold = 80f * resources.displayMetrics.density
 
     fun setCards(newCardDataList: List<CardData>) {
         cardDataList = newCardDataList
@@ -100,10 +98,52 @@ class AnimatedCardStackView @JvmOverloads constructor(
     fun reorderCards(cards: List<CardData>): List<CardData> {
         return cards.drop(1) + cards.first()
     }
-    // TODO: [Задание 2] Добавьте обработку жестов
-    // Подсказка: Используйте GestureDetector с методом onFling для обработки свайпов
 
     // TODO: [Задание 3] Добавьте обработку вертикальных свайпов (вверх/вниз)
+    private val gestureDetector = GestureDetector(context, object : GestureDetector.SimpleOnGestureListener() {
+
+        override fun onScroll(
+            e1: MotionEvent?,
+            e2: MotionEvent,
+            distanceX: Float,
+            distanceY: Float
+        ): Boolean {
+            if (abs(distanceY) > abs(distanceX)) {
+                verticalDragOffset += distanceY
+            }
+            return true
+        }
+
+        override fun onFling(
+            e1: MotionEvent?,
+            e2: MotionEvent,
+            velocityX: Float,
+            velocityY: Float
+        ): Boolean {
+            // TODO: Обработка в заданиях 3 и 4
+            return super.onFling(e1, e2, velocityX, velocityY)
+        }
+    })
+
+    // Нужно также переопределить onTouchEvent
+    override fun onTouchEvent(event: MotionEvent): Boolean {
+        gestureDetector.onTouchEvent(event)
+
+        when (event.actionMasked) {
+            MotionEvent.ACTION_CANCEL, MotionEvent.ACTION_DOWN -> {
+                verticalDragOffset = 0f
+            }
+            MotionEvent.ACTION_UP -> {
+                if (abs(verticalDragOffset) > swipeThreshold) {
+                    onSwipe()
+                }
+            }
+        }
+        return true
+    }
+
+    // TODO: [Задание 3] Добавьте обработку вертикальных свайпов (вверх/вниз)
+    private fun onSwipe(isVertical: Boolean = true) {}
 
     // TODO: [Задание 4] Добавьте обработку горизонтальных свайпов (влево/вправо)
 }
