@@ -6,7 +6,8 @@ import android.view.GestureDetector
 import android.view.MotionEvent
 import android.widget.FrameLayout
 import ru.yandexpraktikum.cardsanimation.model.CardData
-import kotlin.math.abs
+import ru.yandexpraktikum.cardsanimation.utils.isHorizontalSwipe
+import ru.yandexpraktikum.cardsanimation.utils.isVerticalSwipe
 
 class AnimatedCardStackView @JvmOverloads constructor(
     context: Context,
@@ -120,12 +121,10 @@ class AnimatedCardStackView @JvmOverloads constructor(
             velocityX: Float,
             velocityY: Float
         ): Boolean {
-            val isVertical = abs(velocityY) > abs(velocityX)
-
-            if (isVertical && abs(velocityY) > flingVelocityThreshold) {
+            if (isVerticalSwipe(velocityX, velocityY, flingVelocityThreshold)) {
                 onSwipe(isVertical = true)
                 return true
-            } else if (!isVertical && abs(velocityX) > flingVelocityThreshold) {
+            } else if (isHorizontalSwipe(velocityX, velocityY, flingVelocityThreshold)) {
                 onSwipe(isVertical = false)
                 return true
             }
@@ -149,19 +148,11 @@ class AnimatedCardStackView @JvmOverloads constructor(
     }
 
     private fun handleDragEnd() {
-        if (isVerticalSwipe()) {
+        if (isVerticalSwipe(horizontalDragOffset, verticalDragOffset, swipeThreshold)) {
             onSwipe(isVertical = true)
-        } else if (isHorizontalSwipe()) {
+        } else if (isHorizontalSwipe(horizontalDragOffset, verticalDragOffset, swipeThreshold)) {
             onSwipe(isVertical = false)
         }
-    }
-
-    private fun isVerticalSwipe(): Boolean {
-        return abs(verticalDragOffset) > abs(horizontalDragOffset) && abs(verticalDragOffset) > swipeThreshold
-    }
-
-    private fun isHorizontalSwipe(): Boolean {
-        return abs(horizontalDragOffset) > abs(verticalDragOffset) && abs(horizontalDragOffset) > swipeThreshold
     }
 
     private fun onSwipe(isVertical: Boolean) {
