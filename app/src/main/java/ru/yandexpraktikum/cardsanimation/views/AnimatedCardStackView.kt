@@ -22,6 +22,8 @@ class AnimatedCardStackView @JvmOverloads constructor(
     private var horizontalDragOffset = 0f
     private val swipeThreshold = 80f * resources.displayMetrics.density
     private val flingVelocityThreshold = 800f * resources.displayMetrics.density
+    private var isAnimating = false
+    private var animationStep = 0
 
     fun setCards(newCardDataList: List<CardData>) {
         cardDataList = newCardDataList
@@ -91,15 +93,81 @@ class AnimatedCardStackView @JvmOverloads constructor(
     }
 
     private fun startCardSwapAnimation(bottomCard: AnimatedCardView) {
-        // TODO: [Задание 5] Добавьте анимацию перетасовки карт
-        // На данном этапе просто быстро двигаем нижнюю карту наверх
-        cardDataList = reorderCards(cardDataList)
-        setupCards()
+        if (isAnimating) return
+
+        isAnimating = true
+        animationStep = 1
+
+        bottomCard.moveCardRight {
+            animationStep = 2
+            bringCardToFront(bottomCard)
+            bottomCard.moveCardToTop {
+                animationStep = 3
+                reorderCardsData()
+                animateAllCardsToFinalPositions()
+            }
+        }
     }
 
-    // Простая функция перестановки карт
-    fun reorderCards(cards: List<CardData>): List<CardData> {
-        return cards.drop(1) + cards.first()
+    private fun reorderCardsData() {
+        val reorderedCards = cardDataList.drop(1) + cardDataList.first()
+        cardDataList = reorderedCards
+
+        val bottomCardView = cards.removeAt(0)
+        cards.add(bottomCardView)
+
+        cards.forEachIndexed { index, cardView ->
+            cardView.setCardData(cardDataList[index])
+        }
+    }
+
+    private fun animateAllCardsToFinalPositions() {
+        var completedAnimations = 0
+        val totalAnimations = cards.size
+
+        cards.forEachIndexed { index, cardView ->
+            val finalRotation = calculateFinalRotation(index)
+
+            cardView.adjustToFinalPosition(finalRotation, index) {
+                completedAnimations++
+                if (completedAnimations == totalAnimations) {
+                    finalizeCardPositions()
+                }
+            }
+        }
+    }
+
+    private fun calculateFinalRotation(cardIndex: Int): Float {
+        val cardCount = cards.size
+        return if (isRotated) {
+            val angleStep = if (cardCount > 1) 180f / (cardCount - 1) else 0f
+            90f - (cardIndex * angleStep)
+        } else {
+            val angleStep = if (cardCount > 1) 45f / (cardCount - 1) else 0f
+            22.5f - (cardIndex * angleStep)
+        }
+    }
+
+    private fun finalizeCardPositions() {
+        cards.forEachIndexed { index, card ->
+            card.setStackPosition(index)
+            val correctRotation = calculateFinalRotation(index)
+            card.rotation = correctRotation
+        }
+
+        isAnimating = false
+        animationStep = 0
+    }
+
+    private fun bringCardToFront(card: AnimatedCardView) {
+        card.bringToFront()
+        val maxElevation = (4 + cards.size + 20).toFloat() * resources.displayMetrics.density
+        card.cardView.cardElevation = maxElevation
+    }
+
+    private fun handleHorizontalSwipe() {
+        val bottomCard = cards.firstOrNull() ?: return
+        startCardSwapAnimation(bottomCard)
     }
 
     private val gestureDetector = GestureDetector(context, object : GestureDetector.SimpleOnGestureListener() {
@@ -160,9 +228,7 @@ class AnimatedCardStackView @JvmOverloads constructor(
             isRotated = !isRotated
             updateCardPositions()
         } else {
-            cards.firstOrNull()?.let { bottomCard ->
-                startCardSwapAnimation(bottomCard)
-            }
+            handleHorizontalSwipe()
         }
         clearDragOffsets()
     }
