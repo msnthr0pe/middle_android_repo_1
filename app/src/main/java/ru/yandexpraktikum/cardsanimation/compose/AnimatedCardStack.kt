@@ -37,9 +37,17 @@ fun calculateCardRotation(
     }
 }
 
+private data class CardSwapAnimationState(
+    val isAnimating: Boolean = false,
+    val animationStep: Int = 0,
+    val movingCardId: Int? = null,
+    val initialRotations: Map<Int, Float> = emptyMap(),
+    val completedCardIds: Set<Int> = emptySet()
+)
+
 @Composable
 fun AnimatedCardStack(cards: List<CardData>) {
-    var orderedCards by remember { mutableStateOf(cards) }
+    var orderedCards by remember(cards) { mutableStateOf(cards) }
     val cardCount = orderedCards.size
     val density = LocalDensity.current
     val swipeThreshold = with(density) {
@@ -47,30 +55,63 @@ fun AnimatedCardStack(cards: List<CardData>) {
     }
     var isRotated by remember { mutableStateOf(false) }
 
-    fun onSwipe(isVertical: Boolean) {
-        if (isVertical) {
-            isRotated = !isRotated
-        } else {
-            orderedCards = reorderCards(orderedCards)
+    val animationState = remember(cards) { mutableStateOf(CardSwapAnimationState()) }
+
+    fun handleVerticalSwipe(
+        verticalDragDistance: Float,
+        onFanStateChange: (Boolean) -> Unit
+    ) {
+        onFanStateChange(verticalDragDistance < 0f)
+    }
+
+    fun handleHorizontalSwipe(
+        horizontalDragDistance: Float,
+        onCardsReorder: () -> Unit
+    ) {
+        if (horizontalDragDistance != 0f) {
+            onCardsReorder()
         }
     }
 
     Box(
-        modifier = Modifier.pointerInput(Unit) {
+        modifier = Modifier.pointerInput(swipeThreshold, cards) {
             var totalDrag = Offset.Zero
             detectDragGestures(
                 onDragStart = {
                     totalDrag = Offset.Zero
                 },
                 onDragEnd = {
-                    val dx = totalDrag.x
-                    val dy = totalDrag.y
+                    if (!animationState.value.isAnimating) {
+                        val dx = totalDrag.x
+                        val dy = totalDrag.y
 
-                    if (isVerticalSwipe(dx, dy, swipeThreshold)) {
-                        onSwipe(isVertical = true)
-                    } else if (isHorizontalSwipe(dx, dy, swipeThreshold)) {
-                        onSwipe(isVertical = false)
+                        when {
+                            isVerticalSwipe(dx, dy, swipeThreshold) -> {
+                                handleVerticalSwipe(
+                                    verticalDragDistance = dy,
+                                    onFanStateChange = { isRotated = it }
+                                )
+                            }
+                            isHorizontalSwipe(dx, dy, swipeThreshold) -> {
+                                handleHorizontalSwipe(
+                                    horizontalDragDistance = dx,
+                                    onCardsReorder = {
+                                        if (orderedCards.size > 1) {
+                                            animationState.value = CardSwapAnimationState(
+                                                isAnimating = true,
+                                                animationStep = 1,
+                                                movingCardId = orderedCards.first().imageResId,
+                                                initialRotations = orderedCards.mapIndexed { index, card ->
+                                                    card.imageResId to calculateCardRotation(index, cardCount, isRotated)
+                                                }.toMap()
+                                            )
+                                        }
+                                    }
+                                )
+                            }
+                        }
                     }
+                    totalDrag = Offset.Zero
                 }
             ) { change, dragAmount ->
                 change.consume()
@@ -81,13 +122,43 @@ fun AnimatedCardStack(cards: List<CardData>) {
     ) {
         orderedCards.forEachIndexed { i, cardData ->
             key(cardData.imageResId) {
-                val targetRotation = calculateCardRotation(i, cardCount, isRotated)
+                val state = animationState.value
+                val finalRotation = calculateCardRotation(i, cardCount, isRotated)
+                val targetRotation = state.initialRotations[cardData.imageResId] ?: finalRotation
+                val isMovingCard = cardData.imageResId == state.movingCardId
 
                 AnimatedCard(
                     cardIndex = i,
                     targetRotation = targetRotation,
-                    cardData = cardData
-                    // TODO: [Задание 5] Здесь добавьте параметры анимации карты
+                    cardData = cardData,
+                    finalRotation = finalRotation,
+                    isAnimating = state.isAnimating,
+                    animationStep = state.animationStep,
+                    isMovingCard = isMovingCard,
+                    onAnimationStepComplete = { step ->
+                        val currentState = animationState.value
+                        if (currentState.isAnimating && currentState.animationStep == step) {
+                            val completedIds = currentState.completedCardIds + cardData.imageResId
+                            if (step == 3) {
+                                animationState.value = currentState.copy(completedCardIds = completedIds)
+                            }
+                            if (step != 3 || completedIds.size == orderedCards.size) {
+                                handleAnimationStepComplete(
+                                    step = step,
+                                    cardIndex = if (step == 3 || isMovingCard) 0 else i + 1,
+                                    onStepChange = { nextStep ->
+                                        if (nextStep == 3) {
+                                            orderedCards = reorderCards(orderedCards)
+                                        }
+                                        animationState.value = currentState.copy(animationStep = nextStep)
+                                    },
+                                    onAnimationComplete = {
+                                        animationState.value = CardSwapAnimationState()
+                                    }
+                                )
+                            }
+                        }
+                    }
                 )
             }
         }
@@ -96,5 +167,21 @@ fun AnimatedCardStack(cards: List<CardData>) {
 
 // Простая функция перестановки карт
 fun reorderCards(cards: List<CardData>): List<CardData> {
+    if (cards.size <= 1) return cards
     return cards.drop(1) + cards.first()
+}
+
+fun handleAnimationStepComplete(
+    step: Int,
+    cardIndex: Int,
+    onStepChange: (Int) -> Unit,
+    onAnimationComplete: () -> Unit
+) {
+    if (cardIndex == 0) {
+        when (step) {
+            1 -> onStepChange(2)
+            2 -> onStepChange(3)
+            3 -> onAnimationComplete()
+        }
+    }
 }
