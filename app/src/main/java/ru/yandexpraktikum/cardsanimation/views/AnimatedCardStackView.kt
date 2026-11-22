@@ -18,6 +18,7 @@ class AnimatedCardStackView @JvmOverloads constructor(
     private val cards = mutableListOf<AnimatedCardView>()
     private var isRotated = false
     private var verticalDragOffset = 0f
+    private var horizontalDragOffset = 0f
     private val swipeThreshold = 80f * resources.displayMetrics.density
     private val flingVelocityThreshold = 800f * resources.displayMetrics.density
 
@@ -100,7 +101,6 @@ class AnimatedCardStackView @JvmOverloads constructor(
         return cards.drop(1) + cards.first()
     }
 
-    // TODO: [Задание 3] Добавьте обработку вертикальных свайпов (вверх/вниз)
     private val gestureDetector = GestureDetector(context, object : GestureDetector.SimpleOnGestureListener() {
 
         override fun onScroll(
@@ -109,9 +109,8 @@ class AnimatedCardStackView @JvmOverloads constructor(
             distanceX: Float,
             distanceY: Float
         ): Boolean {
-            if (abs(distanceY) > abs(distanceX)) {
-                verticalDragOffset += distanceY
-            }
+            verticalDragOffset += distanceY
+            horizontalDragOffset += distanceX
             return true
         }
 
@@ -121,12 +120,13 @@ class AnimatedCardStackView @JvmOverloads constructor(
             velocityX: Float,
             velocityY: Float
         ): Boolean {
-            // TODO: Обработка в заданиях 3 и 4
             val isVertical = abs(velocityY) > abs(velocityX)
 
             if (isVertical && abs(velocityY) > flingVelocityThreshold) {
-                onSwipe()
-                verticalDragOffset = 0f
+                onSwipe(isVertical = true)
+                return true
+            } else if (!isVertical && abs(velocityX) > flingVelocityThreshold) {
+                onSwipe(isVertical = false)
                 return true
             }
             return false
@@ -138,25 +138,46 @@ class AnimatedCardStackView @JvmOverloads constructor(
         gestureDetector.onTouchEvent(event)
 
         when (event.actionMasked) {
-            MotionEvent.ACTION_CANCEL, MotionEvent.ACTION_DOWN -> {
-                verticalDragOffset = 0f
+            MotionEvent.ACTION_DOWN, MotionEvent.ACTION_CANCEL -> {
+                clearDragOffsets()
             }
             MotionEvent.ACTION_UP -> {
-                if (abs(verticalDragOffset) > swipeThreshold) {
-                    onSwipe()
-                }
+                handleDragEnd()
             }
         }
         return true
     }
 
-    // TODO: [Задание 3] Добавьте обработку вертикальных свайпов (вверх/вниз)
-    private fun onSwipe(isVertical: Boolean = true) {
-        if (isVertical) {
-            isRotated = !isRotated
-            updateCardPositions()
+    private fun handleDragEnd() {
+        if (isVerticalSwipe()) {
+            onSwipe(isVertical = true)
+        } else if (isHorizontalSwipe()) {
+            onSwipe(isVertical = false)
         }
     }
 
-    // TODO: [Задание 4] Добавьте обработку горизонтальных свайпов (влево/вправо)
+    private fun isVerticalSwipe(): Boolean {
+        return abs(verticalDragOffset) > abs(horizontalDragOffset) && abs(verticalDragOffset) > swipeThreshold
+    }
+
+    private fun isHorizontalSwipe(): Boolean {
+        return abs(horizontalDragOffset) > abs(verticalDragOffset) && abs(horizontalDragOffset) > swipeThreshold
+    }
+
+    private fun onSwipe(isVertical: Boolean) {
+        if (isVertical) {
+            isRotated = !isRotated
+            updateCardPositions()
+        } else {
+            cards.firstOrNull()?.let { bottomCard ->
+                startCardSwapAnimation(bottomCard)
+            }
+        }
+        clearDragOffsets()
+    }
+
+    private fun clearDragOffsets() {
+        verticalDragOffset = 0f
+        horizontalDragOffset = 0f
+    }
 }
