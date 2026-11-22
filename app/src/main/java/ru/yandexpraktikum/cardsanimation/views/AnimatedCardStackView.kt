@@ -190,7 +190,7 @@ class AnimatedCardStackView @JvmOverloads constructor(
             velocityY: Float
         ): Boolean {
             if (isVerticalSwipe(velocityX, velocityY, flingVelocityThreshold)) {
-                onSwipe(isVertical = true)
+                onSwipe(isVertical = true, expand = velocityY < 0f)
                 return true
             } else if (isHorizontalSwipe(velocityX, velocityY, flingVelocityThreshold)) {
                 onSwipe(isVertical = false)
@@ -200,7 +200,6 @@ class AnimatedCardStackView @JvmOverloads constructor(
         }
     })
 
-    // Нужно также переопределить onTouchEvent
     override fun onTouchEvent(event: MotionEvent): Boolean {
         gestureDetector.onTouchEvent(event)
 
@@ -217,16 +216,18 @@ class AnimatedCardStackView @JvmOverloads constructor(
 
     private fun handleDragEnd() {
         if (isVerticalSwipe(horizontalDragOffset, verticalDragOffset, swipeThreshold)) {
-            onSwipe(isVertical = true)
+            onSwipe(isVertical = true, expand = verticalDragOffset > 0f)
         } else if (isHorizontalSwipe(horizontalDragOffset, verticalDragOffset, swipeThreshold)) {
             onSwipe(isVertical = false)
         }
     }
 
-    private fun onSwipe(isVertical: Boolean) {
+    private fun onSwipe(isVertical: Boolean, expand: Boolean = false) {
         if (isVertical) {
-            isRotated = !isRotated
-            updateCardPositions()
+            if (isRotated != expand) {
+                isRotated = expand
+                updateCardPositions()
+            }
         } else {
             handleHorizontalSwipe()
         }
